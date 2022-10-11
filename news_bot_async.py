@@ -9,6 +9,8 @@ import datetime
 import asyncio
 import aiohttp
 
+statistics = {'successful': 0, 'unsuccessful': 0}
+
 async def get_url_page(session, target_url, conf):
     pattern = conf['pattern']
     ua = fua.UserAgent()
@@ -30,9 +32,11 @@ async def get_url_page(session, target_url, conf):
                         message_text = target_url + link['href']
                     send_new_message(message_text, conf)
     except:
-        print(f'[ERROR] Site processing is unsuccessful {target_url}')
+#         print(f'[ERROR] Site processing is unsuccessful {target_url}')
+        statistics['unsuccessful'] += 1
         return 0
 #     print(f'[INFO] Site processing is successful {target_url}')
+    statistics['successful'] += 1
 
 async def gather_data(conf):
     targets = []
@@ -71,4 +75,6 @@ if __name__ == '__main__':
         my_params = yaml.safe_load(conf)
 #     print(my_params)
     main(my_params)
+    stat_message = f"Successful: {statistics['successful']}, unsuccesful: {statistics['unsuccessful']}"
+    send_new_message(stat_message, my_params)
     print(f'Затраченное время {round(time.time() - start_time, 1)} сек.')
