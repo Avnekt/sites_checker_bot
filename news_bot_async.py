@@ -8,9 +8,15 @@ import random
 import datetime
 import asyncio
 import aiohttp
+import logging
 
-statistics = {'successful': 0, 'unsuccessful': 0}
-log = {'text': ''}
+FORMAT = '%(asctime)s %(name)s %(levelname)s: %(message)s'
+logging.basicConfig(
+    level=logging.INFO,
+    filename='news_bot.log',
+    filemode='w',
+    format=FORMAT
+)
 
 async def get_url_page(session, target_url, conf):
     pattern = conf['pattern']
@@ -18,7 +24,8 @@ async def get_url_page(session, target_url, conf):
     ua.safari
     try:
         async with session.get(target_url, headers={'User-Agent': ua.safari}, timeout=40) as response:
-            assert response.status == 200
+            logging.info(f'Sent request to {target_url}')
+            assert response.status == 200, logging.warning(f'{target_url} status is {response.status}')
             response_text = await response.text()
             bs_site = bs(response_text, 'html.parser')
             try:
@@ -33,12 +40,9 @@ async def get_url_page(session, target_url, conf):
                         message_text = target_url + link['href']
                     send_new_message(message_text, conf)
     except Exception as e:
-#         print(f'[ERROR] Site processing is unsuccessful {target_url}')
-        log['text'] += f'[ERROR] {target_url}: {e}\n'
-        statistics['unsuccessful'] += 1
+        logging.warning(f'{target_url}: {e}')
         return 0
-#     print(f'[INFO] Site processing is successful {target_url}')
-    statistics['successful'] += 1
+    logging.info(f'{target_url} finished successful')
     return 1
 
 async def gather_data(conf):
@@ -72,19 +76,12 @@ def send_new_message(message_text, my_params):
     requests.post(tgApiSend, data=payload)
 
 def main(params):
+    start_time = time.time()
+    logging.warning(f'Starts script at {start_time}')
     asyncio.run(gather_data(params))
+    logging.warning(f'Spended time is {round(time.time() - start_time, 1)} sec')
 
 if __name__ == '__main__':
-    start_time = time.time()
     with open('config.yml') as conf:
         my_params = yaml.safe_load(conf)
-#     print(my_params)
     main(my_params)
-    stat_message = f"Successful: {statistics['successful']}, unsuccesful: {statistics['unsuccessful']}"
-#     send_new_message(stat_message, my_params)
-    time_log = f'Затраченное время {round(time.time() - start_time, 1)} сек.'
-    with open('news_bot.log', 'a') as log_file:
-        log_file.write(f'{time.ctime()}: {stat_message} - {time_log}\n')
-    with open('news_bot_url.log', 'a') as log_file:
-        log_file.write(f'{time.ctime()}: {log["text"]}')
-#     print(f'Затраченное время {round(time.time() - start_time, 1)} сек.')
